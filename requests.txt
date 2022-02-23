@@ -4,5 +4,5 @@ environs
 aiosqlite
 requests
 aiogram
-proxy-checker
+proxy_checking
 pysocks
