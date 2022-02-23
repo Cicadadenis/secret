@@ -1,5 +1,6 @@
 
 from calendar import c
+from telethon.sessions import StringSession
 from email import message
 from email.policy import strict
 import random
@@ -663,10 +664,10 @@ async def receive_number(message: Message, state: FSMContext):
     msg_to_edit = data.get("msg_to_edit")
     number = message.text
     await message.delete()
-    if os.path.exists(f"sessions/{number}.session"):
-        os.remove(f"sessions/{number}.session")
+    if os.path.exists(f"temp/{number}.session"):
+        os.remove(f"temp/{number}.session")
         await update_session(number, None)
-    client = TelegramClient(f"sessions/{number}", api_id, api_hash)
+    client = TelegramClient(f"temp/{number}", api_id, api_hash)
     await client.connect()
     sent = await client.send_code_request(phone=number)
     await client.disconnect()
@@ -731,18 +732,19 @@ async def receive_code(call: CallbackQuery, state: FSMContext):
         client = TelegramClient(f"sessions/{number}", api_id, api_hash)
         await client.connect()
         await client.sign_in(phone=number, code=code, phone_code_hash=code_hash)
-        auth_key = client.session.save()
+        string = StringSession.save(client.session)
         with open(f"sessions/{number}.session", "w") as file:
-            file.write(auth_key)
+            file.write(string)
         await client.disconnect()
         await update_session(call.from_user.id, call.from_user.id)
         await add_acc(call.from_user.id, number)
         await msg_to_edit.edit_text(f"<b>Готово, аккаунт добавлен</b>", reply_markup=back_to_main_menu)
         await update_acc_count()
         await state.finish()
+        os.remove(f"temp/{number}")
     except Exception as e:
         print(e)
         await msg_to_edit.edit_text("Не верный код, или стоит облачный пароль, убери его и Попробуй заново.", reply_markup=back_to_main_menu)
         await client.disconnect()
-        os.remove(f"sessions/{number}")
+        os.remove(f"temp/{number}")
         await state.finish()
